@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pymupdf"]
+# ///
 """Extract text from PDFs, cache as .txt with [PAGE n] markers.
 
 Usage:
-    python scripts/extract.py
-    python scripts/extract.py --input ../my_pdfs
+    uv run scripts/extract.py
+    uv run scripts/extract.py --input ../my_pdfs
 
 Scans the input directory for all *.pdf files (recursively). For each,
 writes a sibling *.txt file where every page begins with "[PAGE n]" on
