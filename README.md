@@ -19,7 +19,7 @@
 
 ## 给谁用
 
-投行 / 证券研究的**面试、笔试、实习任务**里常见这道题：找一家可比上市公司的审核问询回复，逐字抄录关键段落，整理成答题底稿。手工做费时、易出错、质量还看人。这个技能把这个流程变成可复用、可回溯的一键流程。
+做 IPO 项目的投行、证券研究人员，常要为某个审核问询问题找可比上市公司的先例：翻它们的问询回复、逐字抄录对应段落、整理成可引用的底稿。这件事反复、费时、易出错，质量还靠人盯。这个技能把它变成可复用、可回溯的流程。
 
 ## 看效果
 
@@ -29,71 +29,54 @@
 
 ## 怎么用
 
-### A. 作为 Claude Code 技能（推荐）
+这是个 coding-agent 技能，需要一个能读文件、跑命令的 agent（Claude Code / Codex / Gemini CLI / Cursor 等）。不需要你自己敲命令。
 
-把整个仓库放进技能目录：
+### 安装
+
+**自然语言安装（推荐）** —— 直接对 agent 说：
+
+> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能克隆到我的 `~/.claude/skills/` 下，然后用它帮我做一份可比案例底稿。
+
+agent 会自己 `git clone` 到技能目录，首次运行时还会自动建好运行环境（见下方「依赖」）。
+
+**手动安装（Claude Code）** —— 自己 clone：
 
 ```bash
+# 全局（所有项目可用）
 git clone https://github.com/hhaa134323/ipo-inquiry-dossier.git ~/.claude/skills/ipo-inquiry-dossier
+
+# 或项目级（仅当前项目）
+git clone https://github.com/hhaa134323/ipo-inquiry-dossier.git 你的项目/.claude/skills/ipo-inquiry-dossier
 ```
 
-然后用自然语言让 Claude 做事即可，不用敲命令。**触发语**（说到这些会自动用上本技能）：
+也可用 `claude --add-dir /path/to/ipo-inquiry-dossier` 直接引用，无需拷贝。
 
-- “找家可比上市公司的问询回复，帮我做一份毛利率分析的答题底稿”
-- “把这几份审核问询回复 PDF 整理成可直接粘贴的底稿”
-- “IPO 问询 / 反馈意见、可比案例、底稿”
+**其他 coding agent（Codex / Gemini CLI / Cursor…）** —— 把仓库链接丢给它，让它从 **`SKILL.md`** 读起、按需加载 `docs/` 和 `scripts/`；有文件系统权限的也可照上面装进自己的技能目录。
+
+### 使用
+
+装好后用斜杠命令或自然语言触发：
+
+- 斜杠命令（Claude Code）：`/ipo-inquiry-dossier`
+- 自然语言触发（说到这些会自动用上）：
+  - “找家可比上市公司的问询回复，帮我做一份毛利率分析的答题底稿”
+  - “把这几份审核问询回复 PDF 整理成可直接粘贴的底稿”
 
 示例：
 
-> 我在 `~/Desktop/可比公司pdf` 放了几份问询回复，请按 ipo-inquiry-dossier 技能帮我找可比案例、做一份毛利率分析的底稿。
+> 我在 `~/Desktop/可比公司pdf` 放了几份问询回复，请用 ipo-inquiry-dossier 帮我找可比案例、做一份毛利率分析的底稿。
 
 技能会：
 
-1. 调 `extract.py` 把 PDF 逐页抽成 `[PAGE n]` 文本缓存；
-2. 按 `docs/METHODOLOGY.md` 召回 + 五维精排，产出 `hits.jsonl`；
-3. 调 `build_dossier.py` 按页码逐字渲染出 `.docx` 底稿。
+1. 调 `extract.py` 把 PDF 逐页抽成 `[PAGE n]` 文本缓存（脚本）；
+2. 检索可比先例并按五维 rubric 精排、产出 `hits.jsonl`（**这步靠 AI 判断**）；
+3. 调 `build_dossier.py` 按页码逐字渲染出 `.docx` 底稿（脚本）。
 
-你全程只提供 PDF 和问题，不用手动跑 Python，也不用手动装依赖（见下方「依赖」）。
-
-### B. 其他 coding agent（Codex / Gemini CLI / Cursor / OpenCode…）
-
-把这个仓库链接丢给 agent，让它用本技能：
-
-```text
-https://github.com/hhaa134323/ipo-inquiry-dossier
-```
-
-能读 GitHub / 本地文件的 agent，应从 **`SKILL.md`** 读起，按需再加载 `docs/METHODOLOGY.md` 和 `scripts/`。有文件系统权限的 agent 也可以照 A 的方式把仓库装进自己的技能目录。
-
-### C. 手动跑脚本（可选）
-
-不想用 agent，自己在命令行跑也行。先建隔离环境（依赖只有 `pymupdf`、`python-docx`）：
-
-```bash
-python -m venv .venv
-# macOS / Linux:
-.venv/bin/python -m pip install -r requirements.txt
-# Windows:
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-下文 `PY` = 上面 venv 里的解释器（macOS/Linux `.venv/bin/python`、Windows `.venv\Scripts\python.exe`）：
-
-```bash
-# 1. 抽取文本缓存
-PY scripts/extract.py --input 你的PDF目录
-
-# 2. 写好 hits.jsonl（格式见 docs/METHODOLOGY.md，可参照 examples/sample_hits.jsonl）
-
-# 3. 生成底稿
-PY scripts/build_dossier.py --input 你的PDF目录 --output 输出目录 --hits 输出目录/hits.jsonl
-```
-
-输出文件名形如 `底稿_{主题}_{日期}.docx`。`--input`、`--output`、`--hits` 都可省略，默认 `./input`、`./output`、`./output/hits.jsonl`。
+你全程只提供 PDF 和问题，不用敲命令、不用装依赖。
 
 ## 依赖（首次自动装）
 
-依赖只有 `pymupdf` 和 `python-docx`，**使用者不用手动装**。`SKILL.md` 里写了「首次运行自动建 venv + 装依赖」：agent 第一次跑时会 `python -m venv .venv` 并把依赖装进去，之后统一用该 venv 的解释器跑脚本（跨平台，不引入 uv 之类额外工具）。脚本只用 `pathlib` 和标准库，Windows / macOS / Linux 一致运行。
+依赖只有 `pymupdf` 和 `python-docx`，**使用者不用手动装**。`SKILL.md` 里写了「首次运行自动建 venv + 装依赖」：agent 第一次跑时会建一个 `.venv` 并把依赖装进去，之后统一用该 venv 的解释器跑脚本（跨平台，不引入 uv 之类额外工具）。脚本只用 `pathlib` 和标准库，Windows / macOS / Linux 一致运行。
 
 ## Skill 结构
 
@@ -128,7 +111,7 @@ ipo-inquiry-dossier/
 - AI 只决定“抄哪些”并记下页码指针；渲染时由 `build_dossier.py` 按页码直接从 PDF 逐字读出——引用与原文一字不差，也不进 AI 上下文被改写。
 - 顺带的好处：token 消耗与底稿篇幅解耦，一份十页底稿约几千 token，而非几十万。
 
-### 召回与精排两段分离
+### 召回与精排两段分离（AI 负责的部分）
 - 召回：从问题原文拆限定词，做同义 / 口径扩展，机械 grep 扫缓存，高召回不取舍。
 - 精排：逐个候选按五维 rubric 打分（同问询实质、真问询先例、产品行业可比、口径一致、可借鉴），每项 0–2 分，达 7 分且无 0 分项才保留。
 - 所有候选（含丢弃的）记录在 `ranking_report.jsonl`，每步判断可回溯。
@@ -138,14 +121,20 @@ ipo-inquiry-dossier/
 
 ## 工作流
 
+虚线框是 **AI 判断**的环节，实线框是**脚本确定性执行**：
+
 ```mermaid
 flowchart TD
-    A["可比公司问询回复 PDF"] --> B["extract.py：逐页抽取为 PAGE n 文本缓存"]
-    B --> C["按 METHODOLOGY 检索 + 五维精排"]
-    C --> D["hits.jsonl：页码指针 + 相关性 + 关键锚点"]
-    D --> E["build_dossier.py：按页码从 PDF 逐字渲染"]
-    E --> F["可直接粘贴的 .docx 底稿"]
+    A["问询回复 PDF"] --> B["extract.py 抽文本缓存"]
+    B --> C["检索可比先例<br>+ 五维精排"]
+    C --> D["hits.jsonl<br>页码指针 + 评分"]
+    D --> E["build_dossier.py<br>按页码逐字渲染"]
+    E --> F[".docx 底稿"]
+    classDef ai stroke-dasharray:5 5;
+    class C ai;
 ```
+
+AI 只出现在中间那一步（决定哪些案例可比、抄哪几段）；两端的抽取和渲染都是脚本确定性完成，不经模型。
 
 ## 引用纪律
 
