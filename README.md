@@ -59,26 +59,30 @@ flowchart TD
 
 > 我在 `~/Desktop/可比公司pdf` 放了几份问询回复，请按 ipo-inquiry-dossier 技能帮我找可比案例、做一份毛利率分析的底稿。
 
-Claude 会自己读 `SKILL.md`，按方法论完成检索和精排，并调用脚本（含安装依赖）生成底稿。你全程只需要提供 PDF 和问题，不用手动跑 Python。
+Claude 会自己读 `SKILL.md`，按方法论完成检索和精排；首次运行时会自动建好 venv 并安装依赖，再调用脚本生成底稿。你全程只需要提供 PDF 和问题，不用手动跑 Python、也不用手动装依赖。
 
 ### 方式二：手动运行脚本（可选）
 
-需要的话也可以直接在命令行运行。依赖只有 `pymupdf` 和 `python-docx`：
+需要的话也可以直接在命令行运行。建议先建一个隔离环境，依赖只有 `pymupdf` 和 `python-docx`：
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+# macOS / Linux:
+.venv/bin/python -m pip install -r requirements.txt
+# Windows:
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-把 PDF 放进一个目录，抽取文本缓存：
+下文 `PY` 即上面 venv 里的解释器（macOS/Linux `.venv/bin/python`、Windows `.venv\Scripts\python.exe`）。把 PDF 放进一个目录，抽取文本缓存：
 
 ```bash
-python scripts/extract.py --input 你的PDF目录
+PY scripts/extract.py --input 你的PDF目录
 ```
 
-写好 `hits.jsonl`（格式见 `docs/METHODOLOGY.md`）后生成底稿：
+写好 `hits.jsonl`（格式见 `docs/METHODOLOGY.md`，可参照 `examples/sample_hits.jsonl`）后生成底稿：
 
 ```bash
-python scripts/build_dossier.py --input 你的PDF目录 --output 输出目录 --hits 输出目录/hits.jsonl
+PY scripts/build_dossier.py --input 你的PDF目录 --output 输出目录 --hits 输出目录/hits.jsonl
 ```
 
 输出文件名形如 `底稿_{主题}_{日期}.docx`。`--input`、`--output`、`--hits` 都可省略，默认分别是 `./input`、`./output`、`./output/hits.jsonl`。脚本只用 `pathlib` 和标准库，Windows、macOS、Linux 一致运行。
