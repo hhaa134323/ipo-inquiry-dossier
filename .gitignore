@@ -1,0 +1,13 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Runtime output (generated when running scripts)
+output/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
