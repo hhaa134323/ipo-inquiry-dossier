@@ -180,11 +180,11 @@ ipo-inquiry-dossier/
 
 ```mermaid
 flowchart TD
-    A[\"问询回复 PDF\"] --> B[\"extract.py 抽文本缓存\"]
-    B --> C[\"检索可比先例<br>+ 评分精排\"]
-    C --> D[\"hits.jsonl<br>页码指针 + 评分\"]
-    D --> E[\"build_dossier.py<br>按页码逐字渲染\"]
-    E --> F[\".docx 底稿\"]
+    A["问询回复 PDF"] --> B["extract.py 抽文本缓存"]
+    B --> C["检索可比先例<br>+ 评分精排"]
+    C --> D["hits.jsonl<br>页码指针 + 评分"]
+    D --> E["build_dossier.py<br>按页码逐字渲染"]
+    E --> F[".docx 底稿"]
     classDef ai stroke-dasharray:5 5;
     class C ai;
 ```
