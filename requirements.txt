@@ -1,2 +1,7 @@
-pymupdf
-python-docx
+# 依赖清单 — 开发与测试均在 Python 3.12；建议 Python >= 3.9。
+# 安装前最好先升级 pip，确保能直接拿到预编译 wheel、不触发本地编译：
+#   python -m pip install -U pip
+# 注意包名是 python-docx；不要误装 PyPI 上同名的 docx（已废弃，会让 import docx 失败）。
+
+pymupdf>=1.23.0      # 1.23.0 起才有 page.find_tables()，表格抽取/三级兜底靠它
+python-docx>=1.1.0   # 生成 .docx、关键锚点黄色高亮
