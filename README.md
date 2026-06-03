@@ -39,7 +39,7 @@
 
 **快速上手，三步：**
 
-1. **装**——对你的 agent 说一句话，让它把 https://github.com/hhaa134323/ipo-inquiry-dossier 克隆到 `~/.claude/skills/` 下**并装好依赖**（建好 `.venv`、按 `requirements.txt` 安装），一次装好、以后跑任务不用再装。
+1. **装**——对你的 agent 说一句话，让它把 https://github.com/hhaa134323/ipo-inquiry-dossier 装到 `~/.claude/skills/` 下**并装好依赖**（建 `.venv`、按 `requirements.txt` 安装），一次装好、以后跑任务不用再装。本机没装 git 也没关系——下载由 agent 完成；想自己装见下方「安装」。
 2. **放**——把可比公司的问询回复 PDF 放进任意一个目录。
 3. **说**——告诉 agent：用 ipo-inquiry-dossier 帮我做底稿，PDF 在哪个目录、要回答哪道问询。剩下的它全自动跑完。
 
@@ -49,13 +49,15 @@
 
 依赖在**安装这一步**就装好（建 `.venv` + 按 `requirements.txt` 安装），任务运行阶段不再装，也不写进 `SKILL.md` 的工作流。
 
-**自然语言安装（推荐）** —— 直接对 agent 说：
+> 没装 git 也没关系：最省事是让 agent 替你装（下面「自然语言安装」），它会自己把仓库下载好；想自己动手又没有 git，用下面的「没有 git·下载 ZIP」即可，全程不碰命令行 git。
 
-> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能克隆到我的 `~/.claude/skills/` 下，建好 `.venv` 虚拟环境并按 `requirements.txt` 装好依赖，然后用它帮我做一份可比先例底稿。
+**自然语言安装（推荐，不用懂 git）** —— 直接对 agent 说：
 
-agent 会自己 `git clone` 到技能目录，并在安装时一并建好 `.venv`、装好依赖（见下方「依赖」），之后跑任务直接用该环境，无需再装。
+> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能装到我的 `~/.claude/skills/` 下，建好 `.venv` 虚拟环境并按 `requirements.txt` 装好依赖，然后用它帮我做一份可比先例底稿。
 
-**手动安装（Claude Code）** —— 自己 clone 并装好依赖：
+agent 会自己把仓库下载到技能目录，并在安装时一并建好 `.venv`、装好依赖（见下方「依赖」），之后跑任务直接用该环境，无需再装。你本机有没有 git 都行——下载由 agent 完成。
+
+**手动安装 · 有 git** —— 自己 clone 并装好依赖：
 
 ```bash
 # 1. 克隆到技能目录（全局，所有项目可用）
@@ -72,9 +74,32 @@ python -m venv .venv
 .venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
-也可用 `claude --add-dir /path/to/ipo-inquiry-dossier` 直接引用，无需拷贝；引用方式下首次使用前，同样需在该目录建好 `.venv` 并按上面第 2 步装依赖。
+**手动安装 · 没有 git（下载 ZIP）** —— 不用装 git，从网页下载即可：
 
-**其他 coding agent（Codex / Gemini CLI / Cursor…）** —— 把仓库链接丢给它，让它从 **`SKILL.md`** 读起、按需加载 `docs/` 和 `scripts/`；有文件系统权限的也照上面装进自己的技能目录，并在安装时建好 `.venv`、装好依赖。
+1. 打开 https://github.com/hhaa134323/ipo-inquiry-dossier ，点绿色的 **Code → Download ZIP**。
+2. 解压，把文件夹**改名为 `ipo-inquiry-dossier`**（GitHub 下载的 ZIP 解压后通常叫 `ipo-inquiry-dossier-main`），放进技能目录。
+   - macOS / Linux：`~/.claude/skills/`
+   - Windows：`C:\\Users\\你的用户名\\.claude\\skills\\`
+3. 打开终端进入该目录，建虚拟环境并装依赖：
+
+```bash
+# 进入解压放好的目录
+cd ~/.claude/skills/ipo-inquiry-dossier
+
+# macOS / Linux
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+
+# Windows
+python -m venv .venv
+.venv\\Scripts\\python.exe -m pip install -r requirements.txt
+```
+
+> 这条路仍需要 Python（建虚拟环境、装依赖用）。装好 Python 后这几条命令复制粘贴即可；嫌麻烦就直接用上面的「自然语言安装」，让 agent 全程代劳（连 Python 环境也可以让它帮你装）。
+
+也可用 `claude --add-dir /path/to/ipo-inquiry-dossier` 直接引用解压后的目录，无需拷贝；引用方式下首次使用前，同样需在该目录建好 `.venv` 并按上面装依赖。
+
+**其他 coding agent（Codex / Gemini CLI / Cursor…）** —— 把仓库链接丢给它，让它从 **`SKILL.md`** 读起、按需加载 `docs/` 和 `scripts/`；有文件系统权限的也照上面装进自己的技能目录（有 git 用 clone，没有就下载 ZIP），并在安装时建好 `.venv`、装好依赖。
 
 ### 使用
 
