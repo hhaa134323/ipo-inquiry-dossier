@@ -39,7 +39,7 @@
 
 **快速上手，三步：**
 
-1. **装**——对你的 agent 说一句话，让它把 https://github.com/hhaa134323/ipo-inquiry-dossier 克隆到 `~/.claude/skills/` 下，它会自己装好。
+1. **装**——对你的 agent 说一句话，让它把 https://github.com/hhaa134323/ipo-inquiry-dossier 克隆到 `~/.claude/skills/` 下**并装好依赖**（建好 `.venv`、按 `requirements.txt` 安装），一次装好、以后跑任务不用再装。
 2. **放**——把可比公司的问询回复 PDF 放进任意一个目录。
 3. **说**——告诉 agent：用 ipo-inquiry-dossier 帮我做底稿，PDF 在哪个目录、要回答哪道问询。剩下的它全自动跑完。
 
@@ -47,39 +47,48 @@
 
 ### 安装
 
+依赖在**安装这一步**就装好（建 `.venv` + 按 `requirements.txt` 安装），任务运行阶段不再装，也不写进 `SKILL.md` 的工作流。
+
 **自然语言安装（推荐）** —— 直接对 agent 说：
 
-> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能克隆到我的 `~/.claude/skills/` 下，然后用它帮我做一份可比先例底稿。
+> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能克隆到我的 `~/.claude/skills/` 下，建好 `.venv` 虚拟环境并按 `requirements.txt` 装好依赖，然后用它帮我做一份可比先例底稿。
 
-agent 会自己 `git clone` 到技能目录，首次运行时还会自动建好运行环境（见下方「依赖」）。
+agent 会自己 `git clone` 到技能目录，并在安装时一并建好 `.venv`、装好依赖（见下方「依赖」），之后跑任务直接用该环境，无需再装。
 
-**手动安装（Claude Code）** —— 自己 clone：
+**手动安装（Claude Code）** —— 自己 clone 并装好依赖：
 
 ```bash
-# 全局（所有项目可用）
+# 1. 克隆到技能目录（全局，所有项目可用）
 git clone https://github.com/hhaa134323/ipo-inquiry-dossier.git ~/.claude/skills/ipo-inquiry-dossier
+cd ~/.claude/skills/ipo-inquiry-dossier
+# 或项目级（仅当前项目）：克隆到 你的项目/.claude/skills/ipo-inquiry-dossier
 
-# 或项目级（仅当前项目）
-git clone https://github.com/hhaa134323/ipo-inquiry-dossier.git 你的项目/.claude/skills/ipo-inquiry-dossier
+# 2. 建虚拟环境并装依赖（macOS / Linux）
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+
+# Windows
+python -m venv .venv
+.venv\\Scripts\\python.exe -m pip install -r requirements.txt
 ```
 
-也可用 `claude --add-dir /path/to/ipo-inquiry-dossier` 直接引用，无需拷贝。
+也可用 `claude --add-dir /path/to/ipo-inquiry-dossier` 直接引用，无需拷贝；引用方式下首次使用前，同样需在该目录建好 `.venv` 并按上面第 2 步装依赖。
 
-**其他 coding agent（Codex / Gemini CLI / Cursor…）** —— 把仓库链接丢给它，让它从 **`SKILL.md`** 读起、按需加载 `docs/` 和 `scripts/`；有文件系统权限的也可照上面装进自己的技能目录。
+**其他 coding agent（Codex / Gemini CLI / Cursor…）** —— 把仓库链接丢给它，让它从 **`SKILL.md`** 读起、按需加载 `docs/` 和 `scripts/`；有文件系统权限的也照上面装进自己的技能目录，并在安装时建好 `.venv`、装好依赖。
 
 ### 使用
 
 装好后，用斜杠命令 `/ipo-inquiry-dossier`，或者直接像下面示例这样把需求说清楚：
 
-> 我的可比公司问询回复 PDF 都放在 `<我放PDF的目录>`（换成你自己的真实路径，比如 Windows 写 `D:\可比公司问询回复`，Mac/Linux 写 `~/可比公司问询回复`），底稿想输出到 `<输出目录>`。请用 ipo-inquiry-dossier 帮我做一份可比先例底稿，要回答的问询是：「<把要回答的那道审核问询原文粘到这里>」
+> 我的可比公司问询回复 PDF 都放在 `<我放PDF的目录>`（换成你自己的真实路径，比如 Windows 写 `D:\\可比公司问询回复`，Mac/Linux 写 `~/可比公司问询回复`），底稿想输出到 `<输出目录>`。请用 ipo-inquiry-dossier 帮我做一份可比先例底稿，要回答的问询是：「<把要回答的那道审核问询原文粘到这里>」
 
 <details>
 <summary>输入和输出路径的细节，一般不用管，agent 会自动带参数</summary>
 
 脚本用 `--input` 和 `--output` 两个参数控制，你只要把自己的目录路径告诉 agent，它会自动带上参数，不用自己敲。注意传的是你自己存放 PDF、想要产物的目录，不是 skill 安装目录里的子文件夹。
 
-- **输入 PDF 目录** —— `--input`（简写 `-i`），放可比公司问询回复 PDF 的目录。脚本会递归扫描该目录下所有 `*.pdf`。Windows 例 `D:\可比公司问询回复`；Mac/Linux 例 `~/可比公司问询回复` 或 `/Users/你的用户名/可比公司问询回复`。
-- **输出 docx 目录** —— `--output`（简写 `-o`），底稿 docx 的输出目录，产物名形如 `底稿_{主题}_{日期}.docx`；同目录还会落一份 `hits.jsonl`（精排结果，必要时可用 `--hits` 单独指定路径）。Windows 例 `D:\底稿输出`；Mac/Linux 例 `~/底稿输出`。
+- **输入 PDF 目录** —— `--input`（简写 `-i`），放可比公司问询回复 PDF 的目录。脚本会递归扫描该目录下所有 `*.pdf`。Windows 例 `D:\\可比公司问询回复`；Mac/Linux 例 `~/可比公司问询回复` 或 `/Users/你的用户名/可比公司问询回复`。
+- **输出 docx 目录** —— `--output`（简写 `-o`），底稿 docx 的输出目录，产物名形如 `底稿_{主题}_{日期}.docx`；同目录还会落一份 `hits.jsonl`（精排结果，必要时可用 `--hits` 单独指定路径）。Windows 例 `D:\\底稿输出`；Mac/Linux 例 `~/底稿输出`。
 
 </details>
 
@@ -91,9 +100,14 @@ git clone https://github.com/hhaa134323/ipo-inquiry-dossier.git 你的项目/.cl
 
 你全程只提供 PDF 和问题、告诉 agent 文件放在哪，不用自己敲命令、不用装依赖。
 
-## 依赖（首次自动装）
+## 依赖（安装时装好）
 
-依赖只有 `pymupdf` 和 `python-docx`，**使用者不用手动装**。`SKILL.md` 里写了「首次运行自动建 venv + 装依赖」：agent 第一次跑时会建一个 `.venv` 并把依赖装进去，之后统一用该 venv 的解释器跑脚本（跨平台，不引入 uv 之类额外工具）。脚本只用 `pathlib` 和标准库，Windows / macOS / Linux 一致运行。
+依赖只有 `pymupdf` 和 `python-docx`，在**安装 skill 时**一次性装进 `.venv`（见上方「安装」），**使用者不用在跑任务时手动装**。安装阶段建好 `.venv` 并把依赖装进去，之后统一用该 venv 的解释器跑脚本（跨平台，不引入 uv 之类额外工具）。这部分**不写进 `SKILL.md` 的工作流**，避免每次任务都掺进安装逻辑。脚本其余只用 `pathlib` 和标准库，Windows / macOS / Linux 一致运行。
+
+| 包 | 用途 |
+|---|---|
+| `pymupdf` | PDF 逐页抽文本、检表格、按页渲染 PNG |
+| `python-docx` | 生成 .docx 底稿、关键锚点黄色高亮 |
 
 ## Skill 结构
 
@@ -119,7 +133,7 @@ ipo-inquiry-dossier/
 | `scripts/extract.py` | PDF → 文本缓存 | 步骤 1 |
 | `scripts/build_dossier.py` | 渲染 .docx | 步骤 3 |
 | `examples/` | 成品 + hits 格式样例 | 想看产物或对照格式时 |
-| `requirements.txt` | 依赖清单 | 首次装依赖时 |
+| `requirements.txt` | 依赖清单 | 安装 skill 时 |
 
 ## 设计要点
 
@@ -129,8 +143,8 @@ ipo-inquiry-dossier/
 
 ### 召回与精排两段分离（AI 负责的部分）
 - 召回：从问题原文拆限定词，做同义 / 口径扩展，机械 grep 扫缓存，高召回不取舍。
-- 精排：逐个候选按一套固定的**评分标准（rubric）**打分。rubric 就是这张“打分表”，5 个维度——同问询实质、真问询先例、产品行业可比、口径一致、可借鉴——每个维度 0–2 分；总分达 7 分且没有 0 分项才保留。这保证不同问题、不同人用同一把尺子。
-- 所有候选（含丢弃的）记录在 `ranking_report.jsonl`，每步判断可回溯。
+- 精排：粗到细级联。闸一只读问询题目打 A/B 维度，主题不符（维度 A=0）立即淘汰、不读回复；幸存者再 grep 定位、逐字精读回复打 C/D/E（不为省 token 裁剪深读窗口）。rubric 就是这张“打分表”，5 个维度——同问询实质、真问询先例、产品行业可比、口径一致、可借鉴——每个维度 0–2 分；总分达 7 分且没有 0 分项才保留。这保证不同问题、不同人用同一把尺子；省 token 主要靠闸一挡掉大量无关候选。
+- 所有候选（含闸一淘汰、闸二丢弃的）记录在 `ranking_report.jsonl`，每步判断可回溯。
 
 ### 脚本确定性渲染 docx
 - 结论速览卡 / 五级溯源表 / 关键锚点自动标黄 / 表格三级兜底（真表格→截图→段落）/ 自动目录（Word 右键“更新域”）。
@@ -141,11 +155,11 @@ ipo-inquiry-dossier/
 
 ```mermaid
 flowchart TD
-    A["问询回复 PDF"] --> B["extract.py 抽文本缓存"]
-    B --> C["检索可比先例<br>+ 评分精排"]
-    C --> D["hits.jsonl<br>页码指针 + 评分"]
-    D --> E["build_dossier.py<br>按页码逐字渲染"]
-    E --> F[".docx 底稿"]
+    A[\"问询回复 PDF\"] --> B[\"extract.py 抽文本缓存\"]
+    B --> C[\"检索可比先例<br>+ 评分精排\"]
+    C --> D[\"hits.jsonl<br>页码指针 + 评分\"]
+    D --> E[\"build_dossier.py<br>按页码逐字渲染\"]
+    E --> F[\".docx 底稿\"]
     classDef ai stroke-dasharray:5 5;
     class C ai;
 ```
