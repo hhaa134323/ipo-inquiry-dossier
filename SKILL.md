@@ -34,7 +34,7 @@ description: A 股 IPO 问询函检索 + 生成可比案例答题底稿（原文
 ## 三步工作流
 
 1. **extract.py** `scripts/extract.py` —— 将可比公司 PDF 逐页抽取文本为 `[PAGE n]` 缓存（.txt），原文不过模型。
-2. **检索 → 精排** —— 人工 / AI 按 `docs/METHODOLOGY.md` 步骤完成召回与精排，产出 `hits.jsonl`。
+2. **检索 → 精排** —— **精排打分前必须先读取 `docs/METHODOLOGY.md`，严格按其中的 rubric 逐维度打分，不得凭直觉跳过。** 按其步骤完成召回与精排，产出 `hits.jsonl`。
 3. **build_dossier.py** `scripts/build_dossier.py` —— 读 hits.jsonl + PDF 源文件，生成可直接粘贴的 `.docx` 底稿。
 
 ## 运行示例
