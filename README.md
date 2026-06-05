@@ -21,7 +21,7 @@
 
 ## 长文档带来的两难
 
-问询回复一份少则几十页、多则几百页。人来做，要在这么多页里反复翻找、判断，慢且容易看漏；直接把整份文件丢给 AI，又会撑爆上下文，喂得越长越容易看漏、改写原文。这个工具把两头都解开：先把 PDF 抽取落盘，再用 grep 定位、按页码逐字取证，让文件体量和模型吃进的量解耦。文件几百页，模型也只碰命中的几行和页码指针，一份十页底稿约几千 token，而不是几十万。
+问询回复一份少则几十页、多则几百页。人来做，要在这么多页里反复翻找、判断，慢且容易看漏；直接把整份文件丢给 AI，又会撑爆上下文，喂得越长越容易看漏、改写原文。这个工具把两头都解开：先把 PDF 抽取落盘，再用 grep 定位、按页码逐字取证，让文件体量和模型吃进的量解耦。文件几百页，模型也只碰命中的几行和页码指针，一份十页底稿约几千 token，而不是几十万。实测用 DeepSeek V4-Flash 跑完一份完整底稿，按官方定价算下来约 ¥0.3（绝大部分输入命中上下文缓存、按 ¥0.02/百万 token 计），单份成本几乎可以忽略。
 
 ## 给谁用
 
@@ -115,14 +115,14 @@ python -m venv .venv
 脚本用 `--input` 和 `--output` 两个参数控制，你只要把自己的目录路径告诉 agent，它会自动带上参数，不用自己敲。注意传的是你自己存放 PDF、想要产物的目录，不是 skill 安装目录里的子文件夹。
 
 - **输入 PDF 目录** —— `--input`（简写 `-i`），放可比公司问询回复 PDF 的目录。脚本会递归扫描该目录下所有 `*.pdf`。Windows 例 `D:\\可比公司问询回复`；Mac/Linux 例 `~/可比公司问询回复` 或 `/Users/你的用户名/可比公司问询回复`。
-- **输出 docx 目录** —— `--output`（简写 `-o`），底稿 docx 的输出目录，产物名形如 `底稿_{主题}_{日期}.docx`；同目录还会落一份 `hits.jsonl`（精排结果，必要时可用 `--hits` 单独指定路径）。Windows 例 `D:\\底稿输出`；Mac/Linux 例 `~/底稿输出`。
+- **输出 docx 目录** —— `--output`（简写 `-o`），底稿 docx 的输出目录，产物名形如 `底稿_{主题}_{日期}.docx`；**该目录只保留这一份最终 docx**，检索候选、`hits.jsonl`、精排报告、渲染截图等中间产物统一落到 `_work/` 子目录（默认 `{output}/_work`，可用 `--work` 改目录、`--hits` 单独指定 hits 路径）。Windows 例 `D:\\底稿输出`；Mac/Linux 例 `~/底稿输出`。
 
  
 
 技能会：
 
 1. 调 `extract.py --input ` 把 PDF 逐页抽成 `[PAGE n]` 文本缓存（脚本）；
-2. 检索可比先例，按统一评分标准（rubric，5 个维度各 0–2 分）精排、产出 `hits.jsonl`（**这步靠 AI 判断**）；
+2. 检索可比先例：`recall.py` 读口径词表机械 grep 召回候选、`read_pages.py` 按页码逐字读出原文，再按统一评分标准（rubric，5 个维度各 0–2 分）精排、产出 `hits.jsonl`（**口径扩展与打分这步靠 AI 判断**）；
 3. 调 `build_dossier.py --input --output <输出目录>` 按页码逐字渲染出 `.docx` 底稿（脚本）。
 
 你全程只提供 PDF 和问题、告诉 agent 文件放在哪，不用自己敲命令、不用装依赖。
@@ -146,6 +146,8 @@ ipo-inquiry-dossier/
 │   └── sample.png        示例底稿截图
 ├── scripts/
 │   ├── extract.py        PDF 抽取为 [PAGE n] 文本缓存
+│   ├── recall.py         读 term_map 机械 grep，召回候选到 _work/
+│   ├── read_pages.py     按页码从缓存逐字读出原文
 │   └── build_dossier.py  hits.jsonl + PDF 渲染为 .docx
 ├── examples/             成品 docx + hits / 精排报告样例
 └── requirements.txt      pymupdf, python-docx
@@ -158,6 +160,8 @@ ipo-inquiry-dossier/
 | `SKILL.md` | 工作流 + 规则 | 总是（技能触发时） |
 | `docs/METHODOLOGY.md` | 方法论唯一事实源 | 召回 / 精排 / 写 hits 时 |
 | `scripts/extract.py` | PDF → 文本缓存 | 步骤 1 |
+| `scripts/recall.py` | 机械 grep 召回候选 | 召回 |
+| `scripts/read_pages.py` | 按页码逐字读原文 | 精排深读 |
 | `scripts/build_dossier.py` | 渲染 .docx | 步骤 3 |
 | `examples/` | 成品 + hits 格式样例 | 想看产物或对照格式时 |
 | `requirements.txt` | 依赖清单 | 安装 skill 时 |
@@ -169,9 +173,9 @@ ipo-inquiry-dossier/
 - AI 只决定“抄哪些”并记下页码指针；渲染时由 `build_dossier.py` 按页码直接从 PDF 逐字读出——引用与原文一字不差，也不进 AI 上下文被改写。
 
 ### 召回与精排两段分离（AI 负责的部分）
-- 召回：从问题原文拆限定词，做同义 / 口径扩展，机械 grep 扫缓存，高召回不取舍。
-- 精排：粗到细级联。闸一只读问询题目打 A/B 维度，主题不符（维度 A=0）立即淘汰、不读回复；幸存者再 grep 定位、逐字精读回复打 C/D/E（不为省 token 裁剪深读窗口）。rubric 就是这张“打分表”，5 个维度——同问询实质、真问询先例、产品行业可比、口径一致、可借鉴——每个维度 0–2 分；总分达 7 分且没有 0 分项才保留。这保证不同问题、不同人用同一把尺子；省 token 主要靠闸一挡掉大量无关候选。
-- 所有候选（含闸一淘汰、闸二丢弃的）记录在 `ranking_report.jsonl`，每步判断可回溯。
+- 召回：从问题原文拆限定词，做同义 / 口径扩展（AI 写 `_work/term_map.jsonl`），再由 `recall.py` 机械 grep 扫缓存，高召回不取舍。
+- 精排：粗到细级联。闸一用 `read_pages.py` 只读问询题目打 A/B 维度，主题不符（维度 A=0）立即淘汰、不读回复；幸存者再 grep 定位、用 `read_pages.py` 逐字精读回复打 C/D/E（不为省 token 裁剪深读窗口）。rubric 就是这张“打分表”，5 个维度——同问询实质、真问询先例、产品行业可比、口径一致、可借鉴——每个维度 0–2 分；总分达 7 分且没有 0 分项才保留。这保证不同问题、不同人用同一把尺子；省 token 主要靠闸一挡掉大量无关候选。
+- 所有候选（含闸一淘汰、闸二丢弃的）记录在 `_work/ranking_report.jsonl`，每步判断可回溯。
 
 ### 脚本确定性渲染 docx
 - 结论速览卡 / 五级溯源表 / 关键锚点自动标黄 / 表格三级兜底（真表格→截图→段落）/ 自动目录（Word 右键“更新域”）。
@@ -183,7 +187,8 @@ ipo-inquiry-dossier/
 ```mermaid
 flowchart TD
     A["问询回复 PDF"] --> B["extract.py 抽文本缓存"]
-    B --> C["检索可比先例<br>+ 评分精排"]
+    B --> R["recall.py 机械 grep 召回候选"]
+    R --> C["检索可比先例<br>read_pages.py 逐字深读 + 评分精排"]
     C --> D["hits.jsonl<br>页码指针 + 评分"]
     D --> E["build_dossier.py<br>按页码逐字渲染"]
     E --> F[".docx 底稿"]
