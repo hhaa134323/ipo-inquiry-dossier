@@ -55,7 +55,7 @@
 
 **自然语言安装（推荐，不用懂 git）** —— 直接对 agent 说：
 
-> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能装到我的 `~/.claude/skills/` 下，建好 `.venv` 虚拟环境并按 `requirements.txt` 装好依赖，然后用它帮我做一份可比先例底稿。
+> 把 https://github.com/hhaa134323/ipo-inquiry-dossier 这个 Claude Code 技能装到我的 `~/.claude/skills/` 下，建好 `.venv` 虚拟环境并按 `requirements.txt` 装好依赖。**只装环境、先别跑任务**：装完停下来告诉我安装结果就行，不要自动开始做底稿——做底稿是下一步，等我把 PDF 目录和要回答的问询发给你之后再开始（见下方「使用」）。
 
 agent 会自己把仓库下载到技能目录，并在安装时一并建好 `.venv`、装好依赖（见下方「依赖」），之后跑任务直接用该环境，无需再装。你本机有没有 git 都行——下载由 agent 完成。
 
@@ -80,8 +80,8 @@ python -m venv .venv
 
 1. 打开 https://github.com/hhaa134323/ipo-inquiry-dossier ，点绿色的 **Code → Download ZIP**。
 2. 解压，把文件夹**改名为 `ipo-inquiry-dossier`**（GitHub 下载的 ZIP 解压后通常叫 `ipo-inquiry-dossier-main`），放进技能目录。
-   - macOS / Linux：`~/.claude/skills/`
-   - Windows：`C:\\Users\\你的用户名\\.claude\\skills\\`
+ - macOS / Linux：`~/.claude/skills/`
+ - Windows：`C:\\Users\\你的用户名\\.claude\\skills\\`
 3. 打开终端进入该目录，建虚拟环境并装依赖：
 
 ```bash
@@ -109,21 +109,21 @@ python -m venv .venv
 
 > 我的可比公司问询回复 PDF 都放在 `<我放PDF的目录>`（换成你自己的真实路径，比如 Windows 写 `D:\\可比公司问询回复`，Mac/Linux 写 `~/可比公司问询回复`），底稿想输出到 `<输出目录>`。请用 ipo-inquiry-dossier 帮我做一份可比先例底稿，要回答的问询是：「<把要回答的那道审核问询原文粘到这里>」
 
-<details>
-<summary>输入和输出路径的细节，一般不用管，agent 会自动带参数</summary>
+ 
+ 输入和输出路径的细节，一般不用管，agent 会自动带参数 
 
 脚本用 `--input` 和 `--output` 两个参数控制，你只要把自己的目录路径告诉 agent，它会自动带上参数，不用自己敲。注意传的是你自己存放 PDF、想要产物的目录，不是 skill 安装目录里的子文件夹。
 
 - **输入 PDF 目录** —— `--input`（简写 `-i`），放可比公司问询回复 PDF 的目录。脚本会递归扫描该目录下所有 `*.pdf`。Windows 例 `D:\\可比公司问询回复`；Mac/Linux 例 `~/可比公司问询回复` 或 `/Users/你的用户名/可比公司问询回复`。
 - **输出 docx 目录** —— `--output`（简写 `-o`），底稿 docx 的输出目录，产物名形如 `底稿_{主题}_{日期}.docx`；同目录还会落一份 `hits.jsonl`（精排结果，必要时可用 `--hits` 单独指定路径）。Windows 例 `D:\\底稿输出`；Mac/Linux 例 `~/底稿输出`。
 
-</details>
+ 
 
 技能会：
 
-1. 调 `extract.py --input <PDF目录>` 把 PDF 逐页抽成 `[PAGE n]` 文本缓存（脚本）；
+1. 调 `extract.py --input ` 把 PDF 逐页抽成 `[PAGE n]` 文本缓存（脚本）；
 2. 检索可比先例，按统一评分标准（rubric，5 个维度各 0–2 分）精排、产出 `hits.jsonl`（**这步靠 AI 判断**）；
-3. 调 `build_dossier.py --input <PDF目录> --output <输出目录>` 按页码逐字渲染出 `.docx` 底稿（脚本）。
+3. 调 `build_dossier.py --input --output <输出目录>` 按页码逐字渲染出 `.docx` 底稿（脚本）。
 
 你全程只提供 PDF 和问题、告诉 agent 文件放在哪，不用自己敲命令、不用装依赖。
 
