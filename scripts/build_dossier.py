@@ -8,6 +8,9 @@ Usage:
 
 Reads hits.jsonl (first line = meta, rest = hits), extracts content according
 to each hit's page-range and form-type spec, and writes a .docx dossier.
+
+最终 .docx 写入 --output 目录；所有中间产物（截图、表格截图、默认 hits.jsonl）
+统一落到 --work 目录（默认 {output}/_work），使 --output 只保留最终底稿。
 """
 
 from __future__ import annotations
@@ -220,7 +223,7 @@ def extract_table_from_pdf(pdf_path: Path,
 
 
 def render_page_image(pdf_path: Path, page_num: int,
-                      output_dir: Path) -> Path | None:
+                      work_dir: Path) -> Path | None:
     """Render a PDF page as a 2x PNG, return the saved path."""
     try:
         doc = fitz.open(pdf_path)
@@ -232,7 +235,7 @@ def render_page_image(pdf_path: Path, page_num: int,
     page = doc[page_num - 1]
     pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
     img_name = f"{pdf_path.stem}_p{page_num}.png"
-    img_path = output_dir / img_name
+    img_path = work_dir / img_name
     pix.save(str(img_path))
     doc.close()
     return img_path
@@ -282,12 +285,12 @@ def _get_table_health(data: list[list[str]]) -> tuple[bool, int, int, float]:
 
 def _clip_page_region(pdf_path: Path, page_num: int,
                       bbox: tuple[float, float, float, float],
-                      output_dir: Path) -> Path | None:
+                      work_dir: Path) -> Path | None:
     """Clip a page region as 2× PNG; return saved path or None.
 
     *bbox* is (x0, y0, x1, y1) in PDF points, as returned by PyMuPDF
     ``find_tables()`` (plain tuple, not fitz.Rect).  PNG is saved to a
-    dedicated subdirectory under output_dir.
+    dedicated subdirectory under work_dir.
     """
     try:
         pdf = fitz.open(pdf_path)
@@ -298,7 +301,7 @@ def _clip_page_region(pdf_path: Path, page_num: int,
         return None
     page = pdf[page_num - 1]
     pix = page.get_pixmap(clip=bbox, matrix=fitz.Matrix(2, 2))
-    clip_dir = output_dir / "_table_clips"
+    clip_dir = work_dir / "_table_clips"
     clip_dir.mkdir(parents=True, exist_ok=True)
     img_name = f"{pdf_path.stem}_p{page_num}_table.png"
     img_path = clip_dir / img_name
@@ -308,7 +311,7 @@ def _clip_page_region(pdf_path: Path, page_num: int,
 
 
 def _render_page_interleaved(doc: Document, pdf_path: Path,
-                             output_dir: Path, page_num: int,
+                             work_dir: Path, page_num: int,
                              anchors: list[str] | None) -> None:
     """Render one PDF page with interleaved text blocks and tables.
 
@@ -395,14 +398,14 @@ def _render_page_interleaved(doc: Document, pdf_path: Path,
                 add_table_to_doc(doc, item["data"])
             else:
                 img = _clip_page_region(pdf_path, page_num,
-                                        item["bbox"], output_dir)
+                                        item["bbox"], work_dir)
                 if img:
                     doc.add_paragraph("（表格区域截图）")
                     doc.add_picture(str(img), width=Inches(6))
 
 
 def render_form(doc: Document, pdf_path: Path, txt_path: Path,
-                output_dir: Path,
+                work_dir: Path,
                 page_num: int, form: str, *, is_range: bool = False,
                 end_page: int | None = None,
                 anchors: list[str] | None = None) -> None:
@@ -421,7 +424,7 @@ def render_form(doc: Document, pdf_path: Path, txt_path: Path,
     if form == "图":
         pages = range(page_num, (end_page or page_num) + 1)
         for p in pages:
-            img_path = render_page_image(pdf_path, p, output_dir)
+            img_path = render_page_image(pdf_path, p, work_dir)
             if img_path:
                 doc.add_paragraph(f"（第{p}页截图）")
                 doc.add_picture(str(img_path), width=Inches(6))
@@ -429,7 +432,7 @@ def render_form(doc: Document, pdf_path: Path, txt_path: Path,
         # 文本/表格：自动检测表格，交错渲染，不依赖 .txt 缓存
         pages = range(page_num, (end_page or page_num) + 1)
         for p in pages:
-            _render_page_interleaved(doc, pdf_path, output_dir, p, anchors)
+            _render_page_interleaved(doc, pdf_path, work_dir, p, anchors)
 
 
 # ---------------------------------------------------------------------------
@@ -449,20 +452,27 @@ def build_dossier() -> None:
     parser.add_argument(
         "--output", "-o",
         default="./output",
-        help="输出目录（存放 .docx 与截图），默认 ./output",
+        help="输出目录（只放最终 .docx），默认 ./output",
+    )
+    parser.add_argument(
+        "--work",
+        default=None,
+        help="中间产物目录（截图、表格截图、默认 hits.jsonl 等），默认 {output}/_work",
     )
     parser.add_argument(
         "--hits",
         default=None,
-        help="hits.jsonl 路径（默认 {output}/hits.jsonl）",
+        help="hits.jsonl 路径（默认 {work}/hits.jsonl）",
     )
     args = parser.parse_args()
 
     input_dir = Path(args.input).resolve()
     output_dir = Path(args.output).resolve()
-    hits_path = Path(args.hits).resolve() if args.hits else output_dir / "hits.jsonl"
+    work_dir = Path(args.work).resolve() if args.work else output_dir / "_work"
+    hits_path = Path(args.hits).resolve() if args.hits else work_dir / "hits.jsonl"
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
     if not hits_path.exists():
         print(f"ERROR: {hits_path} not found."
@@ -642,7 +652,7 @@ def build_dossier() -> None:
         # ---- Inquiry section ----
         if inquiry_page > 0:
             doc.add_heading(f"问询（第 {inquiry_page} 页）", level=2)
-            render_form(doc, pdf_path, txt_path, output_dir,
+            render_form(doc, pdf_path, txt_path, work_dir,
                         inquiry_page, inquiry_form,
                         anchors=inquiry_anchors)
 
@@ -655,7 +665,7 @@ def build_dossier() -> None:
             )
             doc.add_heading(f"回复（{range_str}）", level=2)
             render_form(
-                doc, pdf_path, txt_path, output_dir,
+                doc, pdf_path, txt_path, work_dir,
                 reply_start, reply_form,
                 is_range=(reply_end != reply_start),
                 end_page=reply_end,
