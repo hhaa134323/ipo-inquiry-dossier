@@ -517,6 +517,21 @@ def build_dossier() -> None:
     question_text = meta.get("问题原文", "")
     search_terms = meta.get("检索条件", "")
 
+    gap_note = str(meta.get("缺口说明", "")).strip()
+
+    # 兜底报错：保留案例必须带总分，避免静默输出 ?/10
+    missing_score = [
+        (h.get("序号", "?"), h.get("公司", "未知公司"))
+        for h in kept_hits
+        if h.get("判可比依据", {}).get("总分") in (None, "")
+    ]
+    if missing_score:
+        print("ERROR: 以下保留案例缺少 判可比依据.总分，已中断以避免静默输出 ?/10：")
+        for seq, co in missing_score:
+            print(f"  - 案例{seq}：{co}")
+        print("请在 hits.jsonl 补全 判可比依据.总分 后重跑。")
+        return
+
     # Derive date from first kept hit or today
     date_str = (kept_hits[0].get("日期", datetime.now().strftime("%Y%m%d"))
                 if kept_hits else datetime.now().strftime("%Y%m%d"))
@@ -579,6 +594,14 @@ def build_dossier() -> None:
         doc.add_paragraph("")
     else:
         doc.add_paragraph("⚠ 本次检索未找到精排保留的合格可比案例。")
+        if gap_note:
+            doc.add_paragraph(gap_note)
+        doc.add_paragraph("")
+
+    # ---- 缺口说明 / 未覆盖事项 (global, from meta.缺口说明) ----
+    if gap_note:
+        doc.add_heading("缺口说明 / 未覆盖事项", level=1)
+        doc.add_paragraph(gap_note)
         doc.add_paragraph("")
 
     # ---- TOC ----
